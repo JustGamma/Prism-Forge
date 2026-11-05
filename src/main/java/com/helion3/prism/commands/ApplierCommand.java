@@ -31,7 +31,9 @@ import com.helion3.prism.api.query.Sort;
 import com.helion3.prism.api.records.Actionable;
 import com.helion3.prism.api.records.ActionableResult;
 import com.helion3.prism.api.records.Result;
+import com.helion3.prism.forge.command.ForgeCommandSource;
 import com.helion3.prism.util.*;
+import org.spongepowered.api.command.CommandException;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.CommandSource;
 import org.spongepowered.api.command.args.GenericArguments;
@@ -56,6 +58,9 @@ public class ApplierCommand {
         .permission("prism.rollback")
         .arguments(GenericArguments.remainingJoinedStrings(Text.of("parameters")))
         .executor((source, args) -> {
+            if (source instanceof ForgeCommandSource) {
+                throw new CommandException(Format.error("Native block restoration is not available in this migration build yet."));
+            }
             // Create a new query session
             final QuerySession session = new QuerySession(source);
             session.addFlag(Flag.NO_GROUP);
@@ -82,6 +87,10 @@ public class ApplierCommand {
      * @param sort
      */
     public static void runApplier(QuerySession session, Sort sort) {
+        if (session.getCommandSource() instanceof ForgeCommandSource) {
+            session.getCommandSource().sendMessage(Format.error("Native block restoration is not available in this migration build yet."));
+            return;
+        }
         session.getQuery().setLimit(Prism.getInstance().getConfig().getLimitCategory().getMaximumActionable());
         CommandSource source = session.getCommandSource();
         try {

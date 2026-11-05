@@ -32,6 +32,7 @@ import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.text.Text;
 
 import com.helion3.prism.util.Format;
+import com.helion3.prism.forge.command.ForgeCommandSource;
 import com.helion3.prism.util.WorldUtil;
 
 public class ExtinguishCommand {
@@ -42,6 +43,9 @@ public class ExtinguishCommand {
             .permission("prism.extinguish")
             .arguments(GenericArguments.integer(Text.of("radius")))
             .executor((source, args) -> {
+                if (source instanceof ForgeCommandSource) {
+                    throw new CommandException(Format.error("Native world-cleanup commands are not available in this migration build yet."));
+                }
                 if (!(source instanceof Player)) {
                     throw new CommandException(Format.error("You must be a player to use this command."));
                 }

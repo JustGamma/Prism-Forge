@@ -32,7 +32,7 @@ import org.spongepowered.api.command.CommandException;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.spec.CommandSpec;
 import org.spongepowered.api.text.Text;
-import org.spongepowered.api.text.format.TextColors;
+import com.helion3.prism.forge.command.ForgeTextColors;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -63,12 +63,13 @@ public class PrismCommands {
                 // Check permission here, so the node doesn't apply to all child commands
                 if (source.hasPermission("prism.info")) {
                     source.sendMessage(Text.of(
-                            Format.heading(TextColors.GRAY, "By ", TextColors.GOLD, "viveleroi", TextColors.GRAY, ".\n"),
-                            TextColors.DARK_AQUA, "Tracking so good the NSA stole our name.\n",
-                            TextColors.GRAY, "Help: ", TextColors.WHITE, "/pr ?\n",
-                            TextColors.GRAY, "IRC: ", TextColors.WHITE, "irc.esper.net #prism\n",
-                            TextColors.GRAY, "Site: ", Format.url(Reference.WEBSITE), "\n",
-                            TextColors.GRAY, "Source: ", Format.url(Reference.SOURCE)
+                            Format.heading(ForgeTextColors.GRAY, "By ", ForgeTextColors.GOLD, "viveleroi", ForgeTextColors.GRAY, ".\n"),
+                            ForgeTextColors.DARK_AQUA, "Tracking so good the NSA stole our name.\n",
+                            ForgeTextColors.GRAY, "Help: ", ForgeTextColors.WHITE, "/pr ?\n",
+                            ForgeTextColors.GRAY, "IRC: ", ForgeTextColors.WHITE, "irc.esper.net #prism\n",
+                            ForgeTextColors.GRAY, "Site: ", Format.url(Reference.WEBSITE), "\n",
+                            ForgeTextColors.GRAY, "Source: ", Format.url(Reference.SOURCE), "\n",
+                            ForgeTextColors.GRAY, "Forge migration: lookup and inspection available; gameplay recording and restoration pending."
                     ));
 
                     return CommandResult.success();

@@ -106,7 +106,10 @@ public class QueryBuilder {
 
             if (!futures.isEmpty()) {
                 CompletableFuture<Void> combinedFuture = CompletableFuture.<Void>allOf(futures.toArray(new CompletableFuture<?>[futures.size()]));
-                combinedFuture.thenAccept((q) -> future.complete(query));
+                combinedFuture.whenComplete((q, failure) -> {
+                    if (failure == null) future.complete(query);
+                    else future.completeExceptionally(failure);
+                });
             } else {
                 future.complete(query);
             }

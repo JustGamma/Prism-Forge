@@ -24,6 +24,7 @@
 package com.helion3.prism.util;
 
 import com.helion3.prism.Prism;
+import com.helion3.prism.forge.ForgeServerTasks;
 import com.helion3.prism.api.query.QuerySession;
 import com.helion3.prism.api.records.Result;
 
@@ -54,9 +55,11 @@ public class AsyncUtil {
         Prism.getInstance().getScheduler().execute("PrismLookup", () -> {
             try {
                 CompletableFuture<List<Result>> future = Prism.getInstance().getStorageAdapter().records().query(session, true);
-                future.thenAccept(results -> {
+                future.whenComplete((results, failure) -> ForgeServerTasks.run(() -> {
                     try {
-                        if (results.isEmpty()) {
+                        if (failure != null) {
+                            callback.error(failure instanceof Exception ? (Exception) failure : new RuntimeException(failure));
+                        } else if (results.isEmpty()) {
                             callback.empty();
                         } else {
                             callback.success(results);
@@ -65,9 +68,9 @@ public class AsyncUtil {
                         session.getCommandSource().sendMessage(Format.error(e.getMessage()));
                         e.printStackTrace();
                     }
-                });
+                }));
             } catch (Exception e) {
-                callback.error(e);
+                ForgeServerTasks.run(() -> callback.error(e));
                 e.printStackTrace();
             }
         });

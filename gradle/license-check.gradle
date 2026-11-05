@@ -1,0 +1,47 @@
+// Retain strict project-header validation without the removed legacy Gradle license plugin.
+def licenseSourceRoots = [
+    rootProject.file('src/main/java'),
+    rootProject.file('src/test/java'),
+    project.file('src/main/java'),
+    project.file('src/test/java'),
+    project.file('src/integrationTest/java')
+]
+def licenseSources = files(licenseSourceRoots.collect { directory ->
+    fileTree(directory) { include '**/*.java' }
+})
+def projectHeaderFile = rootProject.file('HEADER.txt')
+def upstreamHeaderFile = rootProject.file('gradle/upstream-nbt-header.txt')
+def upstreamSource = project.file('src/main/java/com/helion3/prism/forge/data/NbtTranslator.java')
+
+tasks.register('licenseCheck') {
+    group = 'verification'
+    description = 'Checks complete project MIT headers and the retained upstream NBT notice.'
+    inputs.files(licenseSources)
+    inputs.files(projectHeaderFile, upstreamHeaderFile)
+    doLast {
+        String body = projectHeaderFile.getText('UTF-8')
+            .replace('\r\n', '\n')
+            .replace('${year}', '2015')
+            .replace('${organization}', 'Helion3')
+            .replace('${url}', 'http://helion3.com/')
+        String projectHeader = '/*\n' + body.readLines().collect { line ->
+            line.isEmpty() ? ' *' : ' * ' + line
+        }.join('\n') + '\n */'
+        String upstreamHeader = upstreamHeaderFile.getText('UTF-8').replace('\r\n', '\n').stripTrailing()
+        List<String> invalid = []
+        licenseSources.files.sort().each { source ->
+            String expected = source == upstreamSource ? upstreamHeader : projectHeader
+            String contents = source.getText('UTF-8').replace('\r\n', '\n')
+            if (!contents.startsWith(expected + '\n')) {
+                invalid.add(rootProject.relativePath(source))
+            }
+        }
+        if (!invalid.isEmpty()) {
+            throw new GradleException('Missing or different complete license header:\n' + invalid.join('\n'))
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('licenseCheck')
+}

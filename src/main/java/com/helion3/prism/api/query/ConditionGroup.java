@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.flowpowered.math.vector.Vector3i;
+import com.helion3.prism.forge.world.ForgeLocation;
 import org.spongepowered.api.world.Location;
 
 import com.google.common.collect.Range;
@@ -107,6 +108,16 @@ public final class ConditionGroup implements Condition {
         return conditions;
     }
 
+    /** Builds the same exact-location conditions from a detached native Forge location. */
+    public static ConditionGroup from(ForgeLocation location) {
+        ConditionGroup conditions = new ConditionGroup(Operator.AND);
+        conditions.add(FieldCondition.of(DataQueries.Location.then(DataQueries.WorldUuid), MatchRule.EQUALS, location.getWorldId().toString()));
+        conditions.add(FieldCondition.of(DataQueries.Location.then(DataQueries.X), MatchRule.EQUALS, location.getX()));
+        conditions.add(FieldCondition.of(DataQueries.Location.then(DataQueries.Y), MatchRule.EQUALS, location.getY()));
+        conditions.add(FieldCondition.of(DataQueries.Location.then(DataQueries.Z), MatchRule.EQUALS, location.getZ()));
+        return conditions;
+    }
+
     /**
      * Convenience method to build conditions for a region of radius around a central location.
      *
@@ -132,6 +143,16 @@ public final class ConditionGroup implements Condition {
         Range<Integer> zRange = Range.open(location.getBlockZ() - radius, location.getBlockZ() + radius);
         conditions.add(FieldCondition.of(DataQueries.Location.then(DataQueries.Z), zRange));
 
+        return conditions;
+    }
+
+    /** Preserves the original open-bound radius conditions for native Forge locations. */
+    public static ConditionGroup from(ForgeLocation location, int radius) {
+        ConditionGroup conditions = new ConditionGroup(Operator.AND);
+        conditions.add(FieldCondition.of(DataQueries.Location.then(DataQueries.WorldUuid), MatchRule.EQUALS, location.getWorldId().toString()));
+        conditions.add(FieldCondition.of(DataQueries.Location.then(DataQueries.X), Range.open(location.getX() - radius, location.getX() + radius)));
+        conditions.add(FieldCondition.of(DataQueries.Location.then(DataQueries.Y), Range.open(location.getY() - radius, location.getY() + radius)));
+        conditions.add(FieldCondition.of(DataQueries.Location.then(DataQueries.Z), Range.open(location.getZ() - radius, location.getZ() + radius)));
         return conditions;
     }
 

@@ -23,7 +23,8 @@
  */
 package com.helion3.prism.commands;
 
-import org.spongepowered.api.entity.living.player.Player;
+import com.helion3.prism.forge.command.ForgeCommandSource;
+import org.spongepowered.api.command.CommandException;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.command.CommandResult;
 import org.spongepowered.api.command.spec.CommandSpec;
@@ -42,13 +43,16 @@ public class NearCommand {
             .description(Text.of("Alias of /pr l r:(default radius)"))
             .permission("prism.lookup")
             .executor((source, args) -> {
+                if (!ForgeCommandSource.player(source).isPresent()) {
+                    throw new CommandException(Format.error("You must be a player to use this command."));
+                }
                 int radius = Prism.getInstance().getConfig().getDefaultCategory().getRadius();
 
                 source.sendMessage(Format.heading("Querying records..."));
 
                 // Create a new query session
                 final QuerySession session = new QuerySession(source);
-                session.newQuery().addCondition(ConditionGroup.from(((Player) source).getLocation(), radius));
+                session.newQuery().addCondition(ConditionGroup.from(ForgeCommandSource.location(source).get(), radius));
 
                 // Pass off to an async lookup helper
                 AsyncUtil.lookup(session);

@@ -4,13 +4,11 @@ The purpose of this project is to enable the official servers to switch away fro
 
 Personal disclaimer:
 
-I am not a professional software developer, but a hobbyst with a sysadmin history, and previous development related work in Python, Php and C#.
-I do not have expert understanding of Java, but with other experiences in web development, IoT, and god knows how many hours debugging the same, combined with good common practices, I believe I will be able to make an acceptable port for Forge, in hopes that somebody with expert level understanding of modded minecraft will be able to spend some time to review the changes, and determine whether or not the port will be viable for its purpose, or worst case scenario, make something better out of it.
+I am not a professional software developer, but a hobbyst with a sysadmin history, and previous development related work in Python, Php and C#. I do not have expert understanding of Java, but with other experiences in web development, IoT, and god knows how many hours debugging the same, combined with good common practices, I believe I will be able to make an acceptable port for Forge, in hopes that somebody with expert level understanding of modded minecraft will be able to spend some time to review the changes, and determine whether or not the port will be viable for its purpose, or worst case scenario, make something better out of it. As It appears nobody has attempted the port to date, this is my attempt at contributing to the official servers' community, which I've come to care about, and through which I've met several great people, now friends.
 
 AI disclaimer:
 
-This project uses AI, more specifically, OpenAI's models GPT-6.1 Sol Max/Ultra.
-Every pushed change has been reviewed by me with general understanding of what its code does and the logic behind it. It operates on specific instructions not to change any part of the project without a human review, and explicit permission to proceed.
+This project uses AI, more specifically, OpenAI's models GPT-6.1 Sol Max/Ultra. It operates on specific instructions not to change any part of the project without a human review, and explicit permission to proceed. Every pushed change has been analyzed by me with general understanding of what its code does and the logic behind it, and every line of code it interacted with has been manually inspected.
 
 No commit messages, or final documentation has been or ever will be written by AI, in part or fully.
 

@@ -24,14 +24,14 @@
 package com.helion3.prism.api.parameters;
 
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
 
-import org.spongepowered.api.Sponge;
 import org.spongepowered.api.command.CommandSource;
-import org.spongepowered.api.profile.GameProfile;
+import com.helion3.prism.forge.ForgeProfiles;
 
 import com.google.common.collect.ImmutableList;
 import com.helion3.prism.api.query.FieldCondition;
@@ -62,10 +62,8 @@ public class ParameterPlayer extends SimpleParameterHandler {
 
     @Override
     public Optional<CompletableFuture<?>> process(QuerySession session, String parameter, String value, Query query) {
-        CompletableFuture<GameProfile> future = Sponge.getServer().getGameProfileManager().get(value, true);
-
-        future.thenAccept(profile -> query.addCondition(FieldCondition.of(DataQueries.Player, MatchRule.EQUALS, profile.getUniqueId().toString())));
-
-        return Optional.of(future);
+        CompletableFuture<UUID> future = ForgeProfiles.uniqueId(value);
+        return Optional.of(future.thenAccept(uuid -> query.addCondition(
+                FieldCondition.of(DataQueries.Player, MatchRule.EQUALS, uuid.toString()))));
     }
 }

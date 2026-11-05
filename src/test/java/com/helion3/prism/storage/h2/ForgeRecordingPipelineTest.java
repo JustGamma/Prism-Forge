@@ -1,7 +1,27 @@
 /*
  * This file is part of Prism, licensed under the MIT License (MIT).
- * See LICENSE.txt for the full license.
+ *
+ * Copyright (c) 2015 Helion3 http://helion3.com/
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
+
 package com.helion3.prism.storage.h2;
 
 import com.helion3.prism.Prism;
@@ -238,12 +258,24 @@ class ForgeRecordingPipelineTest {
             public Connection connect(String url, Properties properties) throws SQLException {
                 throw new SQLException("A different mod's driver was selected");
             }
-            public boolean acceptsURL(String url) { return url.startsWith("jdbc:h2:"); }
-            public DriverPropertyInfo[] getPropertyInfo(String url, Properties properties) { return new DriverPropertyInfo[0]; }
-            public int getMajorVersion() { return 0; }
-            public int getMinorVersion() { return 0; }
-            public boolean jdbcCompliant() { return false; }
-            public java.util.logging.Logger getParentLogger() { return java.util.logging.Logger.getGlobal(); }
+            public boolean acceptsURL(String url) {
+                return url.startsWith("jdbc:h2:");
+            }
+            public DriverPropertyInfo[] getPropertyInfo(String url, Properties properties) {
+                return new DriverPropertyInfo[0];
+            }
+            public int getMajorVersion() {
+                return 0;
+            }
+            public int getMinorVersion() {
+                return 0;
+            }
+            public boolean jdbcCompliant() {
+                return false;
+            }
+            public java.util.logging.Logger getParentLogger() {
+                return java.util.logging.Logger.getGlobal();
+            }
         };
         DriverManager.registerDriver(competing);
         try {

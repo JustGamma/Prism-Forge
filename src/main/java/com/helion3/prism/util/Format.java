@@ -27,11 +27,11 @@ package com.helion3.prism.util;
 import static com.google.common.base.Preconditions.*;
 
 import org.apache.commons.lang3.StringUtils;
-import org.spongepowered.api.entity.living.player.Player;
+import com.helion3.prism.forge.command.ForgeCommandSource;
+import com.helion3.prism.forge.command.ForgeTextColors;
+import net.minecraft.world.WorldServer;
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.text.action.TextActions;
-import org.spongepowered.api.text.format.TextColors;
-import org.spongepowered.api.world.World;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -57,7 +57,7 @@ public class Format {
      */
     public static Text error(Text content) {
         checkNotNull(content);
-        return Text.of(prefix(), TextColors.RED, content);
+        return Text.of(prefix(), ForgeTextColors.RED, content);
     }
 
     /**
@@ -76,7 +76,7 @@ public class Format {
      */
     public static Text heading(Text content) {
         checkNotNull(content);
-        return Text.of(prefix(), TextColors.WHITE, content);
+        return Text.of(prefix(), ForgeTextColors.WHITE, content);
     }
 
     /**
@@ -95,7 +95,7 @@ public class Format {
      */
     public static Text message(Text content) {
         checkNotNull(content);
-        return Text.of(TextColors.WHITE, content);
+        return Text.of(ForgeTextColors.WHITE, content);
     }
 
     /**
@@ -114,7 +114,7 @@ public class Format {
      */
     public static Text subduedHeading(Text content) {
         checkNotNull(content);
-        return Text.of(prefix(), TextColors.GRAY, content);
+        return Text.of(prefix(), ForgeTextColors.GRAY, content);
     }
 
     /**
@@ -133,7 +133,7 @@ public class Format {
      */
     public static Text success(Text content) {
         checkNotNull(content);
-        return Text.of(prefix(), TextColors.GREEN, content);
+        return Text.of(prefix(), ForgeTextColors.GREEN, content);
     }
 
     /**
@@ -153,7 +153,7 @@ public class Format {
      */
     public static Text bonus(Text content) {
         checkNotNull(content);
-        return Text.of(TextColors.GRAY, content);
+        return Text.of(ForgeTextColors.GRAY, content);
     }
 
     /**
@@ -161,7 +161,7 @@ public class Format {
      * @return Text Formatted content.
      */
     public static Text prefix() {
-        return Text.of(TextColors.LIGHT_PURPLE, Reference.NAME, " //", TextColors.RESET, " ");
+        return Text.of(ForgeTextColors.LIGHT_PURPLE, Reference.NAME, " //", ForgeTextColors.RESET, " ");
     }
 
     /**
@@ -172,7 +172,7 @@ public class Format {
      */
     public static Text url(String url) {
         Text.Builder textBuilder = Text.builder();
-        textBuilder.append(Text.of(TextColors.BLUE, url));
+        textBuilder.append(Text.of(ForgeTextColors.BLUE, url));
 
         try {
             textBuilder.onClick(TextActions.openUrl(new URL(url)));
@@ -219,19 +219,21 @@ public class Format {
      * @param clickAction Click Action
      * @return Text Formatted content.
      */
-    public static Text location(int x, int y, int z, World world, boolean clickAction) {
+    public static Text location(int x, int y, int z, WorldServer world, boolean clickAction) {
         Text.Builder textBuilder = Text.builder();
         textBuilder.append(Text.of("(x:", x, " y:", y, " z:", z));
         if (world != null) {
-            textBuilder.append(Text.of(" world:", world.getName()));
+            textBuilder.append(Text.of(" world:", world.getWorldInfo().getWorldName()));
 
             if (clickAction) {
                 textBuilder.onClick(TextActions.executeCallback(commandSource -> {
-                    if (!(commandSource instanceof Player)) {
-                        return;
-                    }
-
-                    ((Player) commandSource).setLocation(world.getLocation(x, y, z));
+                    ForgeCommandSource.player(commandSource).ifPresent(player -> {
+                        if (player.worldObj != world) {
+                            commandSource.sendMessage(error("Cross-dimension Prism chat teleport is not available yet."));
+                        } else {
+                            player.setPositionAndUpdate(x, y, z);
+                        }
+                    });
                 }));
             }
         }

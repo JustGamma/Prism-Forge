@@ -1,7 +1,27 @@
 /*
  * This file is part of Prism, licensed under the MIT License (MIT).
- * See LICENSE.txt for the full license.
+ *
+ * Copyright (c) 2015 Helion3 http://helion3.com/
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
+
 package com.helion3.prism.storage.h2;
 
 import com.helion3.prism.Prism;
@@ -12,6 +32,7 @@ import com.helion3.prism.api.query.QuerySession;
 import com.helion3.prism.api.records.PrismRecord;
 import com.helion3.prism.api.records.Result;
 import com.helion3.prism.configuration.Configuration;
+import com.helion3.prism.forge.ForgeServerTasks;
 import com.helion3.prism.queues.RecordingQueue;
 import com.helion3.prism.util.DataQueries;
 import com.helion3.prism.util.PrismEvents;
@@ -33,6 +54,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -153,6 +176,24 @@ class H2RecordPipelineTest {
         assertEquals(1, results.size());
         assertEquals(100L, results.get(0).data.getLong(DataQueries.OriginalBlock.then(DataQueries.UnsafeData)
                 .then(DataQuery.of("energy"))).get());
+    }
+
+    @Test
+    void lookupCompletesExceptionallyWhenNativeProfileSchedulerIsStopped() throws Exception {
+        String playerId = "3292c983-40b8-4b7f-990b-cb66b1341611";
+        enqueue(-42, 100L);
+        RecordingQueue.getQueue().peek().getDataContainer().set(DataQueries.Player, playerId);
+        writeQueuedRecords();
+
+        List<Result> untranslated = storage.records().query(session(false), false).get(1, TimeUnit.SECONDS);
+        assertEquals(1, untranslated.size());
+        assertEquals(playerId, untranslated.get(0).getSourceName());
+
+        ForgeServerTasks.stop();
+        ExecutionException failure = assertThrows(ExecutionException.class,
+                () -> storage.records().query(session(false), true).get(1, TimeUnit.SECONDS));
+        assertInstanceOf(IllegalStateException.class, failure.getCause());
+        assertEquals("Prism server command scheduler is stopped", failure.getCause().getMessage());
     }
 
     @Test

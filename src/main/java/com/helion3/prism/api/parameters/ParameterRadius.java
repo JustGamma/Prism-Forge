@@ -29,11 +29,10 @@ import java.util.regex.Pattern;
 
 import javax.annotation.Nullable;
 
-import org.spongepowered.api.entity.living.player.Player;
 import org.apache.commons.lang3.tuple.Pair;
 import org.spongepowered.api.command.CommandSource;
-import org.spongepowered.api.world.Location;
-import org.spongepowered.api.world.World;
+import com.helion3.prism.forge.command.ForgeCommandSource;
+import com.helion3.prism.forge.world.ForgeLocation;
 
 import com.google.common.collect.ImmutableList;
 import com.helion3.prism.Prism;
@@ -54,7 +53,7 @@ public class ParameterRadius extends SimpleParameterHandler {
 
     @Override
     public boolean acceptsSource(@Nullable CommandSource source) {
-        return (source instanceof Player);
+        return ForgeCommandSource.player(source).isPresent();
     }
 
     @Override
@@ -64,17 +63,19 @@ public class ParameterRadius extends SimpleParameterHandler {
 
     @Override
     public Optional<CompletableFuture<?>> process(QuerySession session, String parameter, String value, Query query) {
-        if (session.getCommandSource() instanceof Player) {
-            Player player = (Player) session.getCommandSource();
-            Location<World> location = player.getLocation();
+        if (!acceptsSource(session.getCommandSource())) return Optional.empty();
+        Optional<ForgeLocation> optionalLocation = ForgeCommandSource.location(session.getCommandSource());
+        if (optionalLocation.isPresent()) {
+            CommandSource source = session.getCommandSource();
+            ForgeLocation location = optionalLocation.get();
 
             int radius = Integer.parseInt(value);
             int maxRadius = Prism.getInstance().getConfig().getLimitCategory().getMaximumRadius();
 
             // Enforce max radius unless player has override perms
-            if (radius > maxRadius && !player.hasPermission("prism.override.radius")) {
+            if (radius > maxRadius && !source.hasPermission("prism.override.radius")) {
                 // @todo move this
-                player.sendMessage(Format.subduedHeading(String.format("Limiting radius to maximum of %d", maxRadius)));
+                source.sendMessage(Format.subduedHeading(String.format("Limiting radius to maximum of %d", maxRadius)));
                 radius = maxRadius;
             }
 
@@ -88,12 +89,14 @@ public class ParameterRadius extends SimpleParameterHandler {
 
     @Override
     public Optional<Pair<String, String>> processDefault(QuerySession session, Query query) {
-        if (session.getCommandSource() instanceof Player) {
+        if (!acceptsSource(session.getCommandSource())) return Optional.empty();
+        Optional<ForgeLocation> optionalLocation = ForgeCommandSource.location(session.getCommandSource());
+        if (optionalLocation.isPresent()) {
             // Default radius from config
             int defaultRadius = Prism.getInstance().getConfig().getDefaultCategory().getRadius();
 
             // Player location
-            Location<World> location = ((Player) session.getCommandSource()).getLocation();
+            ForgeLocation location = optionalLocation.get();
 
             query.addCondition(ConditionGroup.from(location, defaultRadius));
 

@@ -36,7 +36,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.text.translate.CharSequenceTranslator;
 import org.apache.commons.lang3.text.translate.UnicodeEscaper;
-import org.spongepowered.api.Sponge;
+import com.helion3.prism.forge.ForgeProfiles;
 import org.spongepowered.api.data.DataContainer;
 import org.spongepowered.api.data.DataQuery;
 import org.spongepowered.api.data.DataView;
@@ -48,7 +48,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.helion3.prism.Prism;
-import org.spongepowered.api.profile.GameProfile;
 
 public class DataUtil {
 
@@ -276,23 +275,18 @@ public class DataUtil {
      * @return CompletableFuture
      */
     public static CompletableFuture<List<Result>> translateUuidsToNames(List<Result> results, List<UUID> uuidsPendingLookup) {
-        CompletableFuture<List<Result>> future = new CompletableFuture<>();
-
-        CompletableFuture<Collection<GameProfile>> futures = Sponge.getServer().getGameProfileManager().getAllById(uuidsPendingLookup, true);
-        futures.thenAccept((profiles) -> {
-            for (GameProfile profile : profiles) {
+        return ForgeProfiles.names(uuidsPendingLookup).thenApply(profiles -> {
+            for (Map.Entry<UUID, String> profile : profiles.entrySet()) {
                 for (Result r : results) {
                     Optional<Object> cause = r.data.get(DataQueries.Cause);
-                    if (cause.isPresent() && cause.get().equals(profile.getUniqueId().toString())) {
-                        r.data.set(DataQueries.Cause, profile.getName().orElse("unknown"));
+                    if (cause.isPresent() && cause.get().equals(profile.getKey().toString())) {
+                        r.data.set(DataQueries.Cause, profile.getValue());
                     }
                 }
             }
 
-            future.complete(results);
+            return results;
         });
-
-        return future;
     }
 
     /**

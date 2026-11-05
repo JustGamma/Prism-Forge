@@ -46,6 +46,9 @@ import com.helion3.prism.api.records.ActionableResult;
 import com.helion3.prism.api.storage.StorageAdapter;
 import com.helion3.prism.forge.BuildInfo;
 import com.helion3.prism.forge.MigrationStatusCommand;
+import com.helion3.prism.forge.ForgeServerTasks;
+import com.helion3.prism.forge.command.ForgeRootCommand;
+import com.helion3.prism.forge.listeners.ForgeRequiredInteractListener;
 import com.helion3.prism.configuration.Config;
 import com.helion3.prism.configuration.Configuration;
 import com.helion3.prism.queues.RecordingQueueManager;
@@ -63,6 +66,7 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartedEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.event.FMLServerStoppedEvent;
+import net.minecraftforge.common.MinecraftForge;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -140,7 +144,8 @@ public final class Prism {
         registerParameterHandler(new ParameterRadius());
         registerParameterHandler(new ParameterTime());
 
-        // Command and gameplay-listener registration follows their native platform adapters.
+        // Inspection only; gameplay recording awaits its native capture adapters.
+        MinecraftForge.EVENT_BUS.register(new ForgeRequiredInteractListener());
     }
 
     @Mod.EventHandler
@@ -150,6 +155,8 @@ public final class Prism {
 
     @Mod.EventHandler
     public void onStartingServer(FMLServerStartingEvent event) {
+        ForgeServerTasks.start();
+        event.registerServerCommand(new ForgeRootCommand());
         event.registerServerCommand(new MigrationStatusCommand());
     }
 
@@ -173,7 +180,7 @@ public final class Prism {
 
             // Initialize the recording queue manager
             getScheduler().repeat("PrismRecordingQueueManager", recordingQueueManager, 1, TimeUnit.SECONDS);
-            getLogger().info("Prism storage started on Java {}. Gameplay recording, lookup commands and rollback are not enabled yet.",
+            getLogger().info("Prism storage started on Java {}. Lookup and inspection commands are available; gameplay recording and restoration are not enabled yet.",
                     System.getProperty("java.version"));
         } catch (Exception ex) {
             getScheduler().shutdownAndWait();
@@ -188,21 +195,26 @@ public final class Prism {
 
     @Mod.EventHandler
     public void onStoppedServer(FMLServerStoppedEvent event) {
-        // Cancel all scheduled tasks
-        if (getScheduler() != null) {
-            getScheduler().shutdownAndWait();
-        }
-
-        if (storageReady) {
-            // Flush any pending records
-            // If the scheduled task is still running this will block until it completes
-            try {
-                recordingQueueManager.run();
-            } finally {
-                // Shutdown storage only after all database tasks and the final flush complete.
-                getStorageAdapter().close();
-                storageReady = false;
+        try {
+            // Cancel all scheduled tasks
+            if (getScheduler() != null) {
+                getScheduler().shutdownAndWait();
             }
+
+            if (storageReady) {
+                // Flush any pending records
+                // If the scheduled task is still running this will block until it completes
+                try {
+                    recordingQueueManager.run();
+                } finally {
+                    // Shutdown storage only after all database tasks and the final flush complete.
+                    getStorageAdapter().close();
+                    storageReady = false;
+                }
+            }
+        } finally {
+            com.helion3.prism.forge.command.ForgeChatActions.clear();
+            ForgeServerTasks.stop();
         }
     }
 

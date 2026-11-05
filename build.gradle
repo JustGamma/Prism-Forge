@@ -4,7 +4,7 @@ plugins {
 
 allprojects {
     group = 'com.helion3'
-    version = '3.0.0-forge-test.3'
+    version = providers.gradleProperty('prismVersion').getOrElse('3.0.0-forge-test.4')
 }
 
 tasks.named('assemble') {

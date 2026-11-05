@@ -25,7 +25,8 @@ package com.helion3.prism.commands;
 
 import org.spongepowered.api.command.CommandException;
 import org.spongepowered.api.command.spec.CommandSpec;
-import org.spongepowered.api.entity.living.player.Player;
+import net.minecraft.entity.player.EntityPlayerMP;
+import com.helion3.prism.forge.command.ForgeCommandSource;
 import org.spongepowered.api.command.CommandResult;
 
 import com.helion3.prism.Prism;
@@ -38,13 +39,13 @@ public class InspectCommand {
         return CommandSpec.builder()
         .permission("prism.inspect")
         .executor((source, args) -> {
-            if (source instanceof Player) {
-                Player player = (Player) source;
-                if (Prism.getInstance().getActiveWands().contains(player.getUniqueId())) {
-                    Prism.getInstance().getActiveWands().remove(player.getUniqueId());
+            if (ForgeCommandSource.player(source).isPresent()) {
+                EntityPlayerMP player = ForgeCommandSource.player(source).get();
+                if (Prism.getInstance().getActiveWands().contains(player.getUniqueID())) {
+                    Prism.getInstance().getActiveWands().remove(player.getUniqueID());
                     source.sendMessage(Format.heading("Inspection wand disabled."));
                 } else {
-                    Prism.getInstance().getActiveWands().add(player.getUniqueId());
+                    Prism.getInstance().getActiveWands().add(player.getUniqueID());
                     source.sendMessage(Format.heading("Inspection wand enabled."));
                 }
 

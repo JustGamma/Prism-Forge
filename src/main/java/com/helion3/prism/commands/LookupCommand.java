@@ -24,6 +24,7 @@
 package com.helion3.prism.commands;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 import org.spongepowered.api.text.Text;
 import org.spongepowered.api.command.CommandResult;
@@ -31,6 +32,7 @@ import org.spongepowered.api.command.args.GenericArguments;
 import org.spongepowered.api.command.spec.CommandSpec;
 
 import com.helion3.prism.api.query.QuerySession;
+import com.helion3.prism.forge.ForgeServerTasks;
 import com.helion3.prism.util.AsyncUtil;
 import com.helion3.prism.util.Format;
 
@@ -55,9 +57,17 @@ public class LookupCommand {
 
                 try {
                     CompletableFuture<Void> future = session.newQueryFromArguments(parameters);
-                    future.thenAccept((v) -> {
-                        // Pass off to an async lookup helper
-                        AsyncUtil.lookup(session);
+                    future.whenComplete((v, failure) -> {
+                        if (failure == null) {
+                            // Pass off to an async lookup helper
+                            AsyncUtil.lookup(session);
+                        } else {
+                            Throwable cause = failure instanceof CompletionException && failure.getCause() != null
+                                    ? failure.getCause() : failure;
+                            String message = cause.getMessage() == null
+                                    ? "Unknown error. Please check the console." : cause.getMessage();
+                            ForgeServerTasks.run(() -> source.sendMessage(Format.error(Text.of(message))));
+                        }
                     });
                 } catch(Exception e) {
                     String message = e.getMessage() == null ? "Unknown error. Please check the console." : e.getMessage();

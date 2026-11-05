@@ -1,5 +1,9 @@
 plugins {
     id 'java'
+    id 'checkstyle'
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
     id 'com.gtnewhorizons.retrofuturagradle' version '2.0.6'
     id 'com.gradleup.shadow' version '9.6.1'
 }
@@ -54,8 +58,8 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
     }
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 minecraft {
@@ -71,9 +75,51 @@ tasks.named('injectTags') {
     outputClassName.set('com.helion3.prism.forge.BuildInfo')
 }
 
-tasks.named('compileJava', JavaCompile) {
-    options.encoding = 'UTF-8'
-    options.release = 8
+// Application and test classes target the production Java 25 runtime. RFG's separate
+// Minecraft SDK/launcher source sets retain their own legacy toolchains.
+['compileJava', 'compileTestJava', 'compileIntegrationTestJava', 'compileInjectedTagsJava'].each { taskName ->
+    tasks.named(taskName, JavaCompile) {
+        javaCompiler = javaToolchains.compilerFor {
+            languageVersion = JavaLanguageVersion.of(25)
+        }
+        sourceCompatibility = '25'
+        targetCompatibility = '25'
+        options.release = 25
+        options.encoding = 'UTF-8'
+        options.deprecation = true
+        options.compilerArgs.addAll(['-Xlint:all', '-Xlint:-path', '-Xlint:-processing'])
+    }
+}
+
+checkstyle {
+    toolVersion = '14.4.0'
+    configFile = rootProject.file('checkstyle.xml')
+    sourceSets = [project.sourceSets.main, project.sourceSets.test, project.sourceSets.integrationTest]
+    ignoreFailures = false
+}
+
+apply from: rootProject.file('gradle/license-check.gradle')
+
+def gitRevision = providers.gradleProperty('commit').orElse(providers.exec {
+    workingDir rootProject.projectDir
+    commandLine 'git', 'rev-parse', '--short', 'HEAD'
+}.standardOutput.asText.map { it.trim() })
+def gitDescription = providers.exec {
+    workingDir rootProject.projectDir
+    commandLine 'git', 'describe', '--tags', '--always', '--dirty'
+}.standardOutput.asText.map { it.trim() }
+def buildNumber = providers.gradleProperty('buildNumber').getOrElse('0')
+def ciSystem = providers.gradleProperty('ciSystem').getOrElse('unknown')
+def buildMetadata = providers.provider {
+    [
+        'Built-By': System.getProperty('user.name'),
+        'Created-By': System.getProperty('java.vm.version') + ' (' + System.getProperty('java.vm.vendor') + ')',
+        'Implementation-Title': base.archivesName.get(),
+        'Implementation-Version': project.version.toString() + '+' + ciSystem + '-b' + buildNumber + '.git-' + gitRevision.get(),
+        'Implementation-Vendor': 'http://helion3.com/',
+        'Git-Revision': gitRevision.get(),
+        'Git-Describe': gitDescription.get()
+    ]
 }
 
 tasks.named('processResources') {
@@ -82,14 +128,19 @@ tasks.named('processResources') {
         expand(modVersion: project.version)
     }
     from(rootProject.file('LICENSE.txt'))
+    from(rootProject.file('LICENSE.txt')) {
+        rename { 'LICENSE-prism.txt' }
+    }
 }
 
 tasks.named('jar') {
     archiveClassifier = 'unbundled-dev'
+    manifest.attributes(buildMetadata.get())
 }
 
 tasks.named('shadowJar') {
     archiveClassifier = 'dev'
+    manifest.attributes(buildMetadata.get())
     configurations = [project.configurations.bundled]
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     filesMatching('META-INF/services/**') {
@@ -139,12 +190,22 @@ tasks.named('reobfJar') {
     setInputJarFromTask(tasks.named('shadowJar'))
 }
 
-// Separate test mod, installed only in the disposable server. It references no obfuscated
-// Minecraft members, so its Forge event handlers do not need a reobfuscation pass.
-tasks.register('recordingProbeJar', Jar) {
+// Separate test mod, installed only in the disposable server.
+tasks.register('recordingProbeDevJar', Jar) {
     archiveBaseName = 'prism-recording-probe'
-    archiveClassifier = 'test-only'
+    archiveClassifier = 'test-only-dev'
     from sourceSets.integrationTest.output
+}
+
+tasks.named('reobfRecordingProbeDevJar') {
+    archiveClassifier = 'test-only'
+    referenceClasspath.from(sourceSets.main.output)
+}
+
+tasks.register('recordingProbeJar') {
+    group = 'build'
+    description = 'Builds the reobfuscated disposable-server recording probe.'
+    dependsOn tasks.named('reobfRecordingProbeDevJar')
 }
 
 tasks.named('test', Test) {
@@ -158,9 +219,21 @@ tasks.named('test', Test) {
     }
 }
 
-// The legacy mod scanner needs Java 8 production bytecode; test classes run only on JDK 25.
-tasks.named('compileTestJava', JavaCompile) {
-    sourceCompatibility = '25'
-    targetCompatibility = '25'
-    options.release = 25
+publishing {
+    publications {
+        prismForge(MavenPublication) {
+            artifactId = base.archivesName.get()
+            artifact(tasks.named('reobfJar'))
+            pom {
+                name = 'Prism'
+                url = 'https://github.com/JustGamma/Prism-Forge'
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+            }
+        }
+    }
 }

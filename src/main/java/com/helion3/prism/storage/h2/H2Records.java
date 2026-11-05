@@ -190,7 +190,13 @@ public class H2Records implements StorageAdapterRecords {
             }
 
             if (translate && !uuidsPendingLookup.isEmpty()) {
-                DataUtil.translateUuidsToNames(results, uuidsPendingLookup).thenAccept(future::complete);
+                DataUtil.translateUuidsToNames(results, uuidsPendingLookup).whenComplete((translated, failure) -> {
+                    if (failure == null) {
+                        future.complete(translated);
+                    } else {
+                        future.completeExceptionally(failure);
+                    }
+                });
             } else {
                 future.complete(results);
             }

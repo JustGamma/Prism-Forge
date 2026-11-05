@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.common.collect.Lists;
+import com.helion3.prism.forge.command.ForgeCommandSource;
 import org.spongepowered.api.command.CommandException;
 import org.spongepowered.api.block.BlockSnapshot;
 import org.spongepowered.api.command.CommandResult;
@@ -50,6 +51,9 @@ public class UndoCommand {
         return CommandSpec.builder()
             .permission("prism.undo")
             .executor((source, args) -> {
+                if (source instanceof ForgeCommandSource) {
+                    throw new CommandException(Format.error("Native undo is not available in this migration build yet."));
+                }
                 if (!(source instanceof Player)) {
                     throw new CommandException(Format.error("You must be a player to use this command."));
                 }
