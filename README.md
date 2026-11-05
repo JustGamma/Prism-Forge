@@ -1,4 +1,4 @@
-# Prism [![Build Status](https://api.travis-ci.org/prism/Prism.png)](https://travis-ci.org/prism/Prism/)
+# Forge
 
 The purpose of this project is to enable the official servers to switch away from Thermos onto a native Forge server, and as I have been made aware, Prism is the primary blocker. The project aims to retain as much of the original GTNH fork's work as possible, considering it's proven stability over the years, but of course, this is not fully possible due to the nature of this port and Sponge/Forge differences.
 
@@ -14,6 +14,7 @@ Every pushed change has been reviewed by me with general understanding of what i
 
 No commit messages, or final documentation has been or ever will be written by AI, in part or fully.
 
+# Prism
 *By viveleroi*
 
 Prism is a rollback/restore grief-prevention plugin for Sponge-based Minecraft servers. 
