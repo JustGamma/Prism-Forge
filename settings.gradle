@@ -1,0 +1,17 @@
+pluginManagement {
+    repositories {
+        maven {
+            name = 'GTNH Maven'
+            url = uri('https://nexus.gtnewhorizons.com/repository/public/')
+            content {
+                includeGroup 'com.gtnewhorizons'
+                includeGroupByRegex 'com\\.gtnewhorizons\\..+'
+            }
+        }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'prism-forge'
+include 'forge', 'utility-tests'

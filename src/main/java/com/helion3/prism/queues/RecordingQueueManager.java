@@ -28,14 +28,12 @@ import java.util.List;
 
 import com.helion3.prism.api.records.PrismRecord;
 import com.helion3.prism.api.records.PrismRecordPreSaveEvent;
-import org.spongepowered.api.Sponge;
+import net.minecraftforge.common.MinecraftForge;
 import org.spongepowered.api.data.DataContainer;
 
 import com.helion3.prism.Prism;
 import org.spongepowered.api.event.cause.Cause;
 import org.spongepowered.api.event.cause.EventContext;
-import org.spongepowered.api.event.cause.EventContextKeys;
-import org.spongepowered.api.plugin.PluginContainer;
 
 public class RecordingQueueManager implements Runnable {
 
@@ -50,14 +48,11 @@ public class RecordingQueueManager implements Runnable {
 
             if (record != null) {
                 // Prepare PrismRecord for sending to a PrismRecordEvent
-                PluginContainer plugin = Prism.getInstance().getPluginContainer();
-                EventContext eventContext = EventContext.builder().add(EventContextKeys.PLUGIN, plugin).build();
-
                 PrismRecordPreSaveEvent preSaveEvent = new PrismRecordPreSaveEvent(record,
-                    Cause.of(eventContext, plugin));
+                    Cause.of(EventContext.empty(), Prism.getInstance()));
 
-                // Tell Sponge that this PrismRecordEvent has occurred
-                Sponge.getEventManager().post(preSaveEvent);
+                // Preserve the pre-save cancellation point on Forge's native event bus.
+                MinecraftForge.EVENT_BUS.post(preSaveEvent);
 
                 if (!preSaveEvent.isCancelled()) {
                     eventsSaveBatch.add(record.getDataContainer());

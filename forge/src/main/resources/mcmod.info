@@ -1,0 +1,12 @@
+[
+  {
+    "modid": "prism",
+    "name": "Prism Forge migration test",
+    "description": "Original Prism storage and queue migration. Gameplay recording, lookup commands and rollback are not enabled yet.",
+    "version": "${modVersion}",
+    "mcversion": "1.7.10",
+    "url": "https://github.com/JustGamma/Prism-Forge",
+    "authorList": ["viveleroi", "Prism contributors"],
+    "dependencies": []
+  }
+]

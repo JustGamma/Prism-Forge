@@ -26,7 +26,8 @@ package com.helion3.prism.api.records;
 
 import org.spongepowered.api.event.Cancellable;
 import org.spongepowered.api.event.cause.Cause;
-import org.spongepowered.api.event.impl.AbstractEvent;
+import cpw.mods.fml.common.eventhandler.Cancelable;
+import cpw.mods.fml.common.eventhandler.Event;
 
 import javax.annotation.Nonnull;
 
@@ -35,15 +36,15 @@ import javax.annotation.Nonnull;
  * plugins can catch this event and read the PrismRecord or cancel the
  * event.
  */
-public class PrismRecordPreSaveEvent extends AbstractEvent implements Cancellable {
+@Cancelable
+public class PrismRecordPreSaveEvent extends Event implements org.spongepowered.api.event.Event, Cancellable {
 
-  private boolean cancelled = false;
   private final PrismRecord prismRecord;
   private final Cause cause;
 
   /**
    * The constructor for a prism event to log the creation of a Prism Event
-   * to Sponge.
+   * to Forge. Listeners run on the queue worker, as in the original asynchronous pipeline.
    *
    * @param prismRecord The record sent through the event
    * @param cause       The cause of the event
@@ -55,12 +56,17 @@ public class PrismRecordPreSaveEvent extends AbstractEvent implements Cancellabl
 
   @Override
   public boolean isCancelled() {
-    return cancelled;
+    return isCanceled();
   }
 
   @Override
   public void setCancelled(boolean cancel) {
-    this.cancelled = cancel;
+    setCanceled(cancel);
+  }
+
+  @Override
+  public boolean isCancelable() {
+    return true;
   }
 
   @Nonnull

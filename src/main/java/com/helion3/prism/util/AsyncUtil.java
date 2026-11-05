@@ -26,7 +26,6 @@ package com.helion3.prism.util;
 import com.helion3.prism.Prism;
 import com.helion3.prism.api.query.QuerySession;
 import com.helion3.prism.api.records.Result;
-import org.spongepowered.api.Sponge;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -52,7 +51,7 @@ public class AsyncUtil {
      * @param callback AsyncCallback describing the success, empty, and error callbacks.
      */
     private static void async(final QuerySession session, AsyncCallback callback) {
-        Sponge.getScheduler().createTaskBuilder().async().execute(() -> {
+        Prism.getInstance().getScheduler().execute("PrismLookup", () -> {
             try {
                 CompletableFuture<List<Result>> future = Prism.getInstance().getStorageAdapter().records().query(session, true);
                 future.thenAccept(results -> {
@@ -71,6 +70,6 @@ public class AsyncUtil {
                 callback.error(e);
                 e.printStackTrace();
             }
-        }).submit(Prism.getInstance().getPluginContainer());
+        });
     }
 }

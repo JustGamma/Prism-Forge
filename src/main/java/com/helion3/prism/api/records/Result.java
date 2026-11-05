@@ -25,8 +25,8 @@
 package com.helion3.prism.api.records;
 
 import com.helion3.prism.api.data.PrismEvent;
+import com.helion3.prism.util.PrismEvents;
 import org.apache.commons.lang3.StringUtils;
-import org.spongepowered.api.Sponge;
 import org.spongepowered.api.data.DataContainer;
 
 import com.helion3.prism.util.DataQueries;
@@ -42,7 +42,7 @@ public abstract class Result {
      */
     public String getEventVerb() {
         String id = getEventId();
-        PrismEvent event = Sponge.getRegistry().getType(PrismEvent.class, id).orElse(null);
+        PrismEvent event = PrismEvents.REGISTRY_MODULE.getById(id).orElse(null);
         if (event != null) {
             if (StringUtils.isNotBlank(event.getPastTense())) {
                 return event.getPastTense();
@@ -72,7 +72,7 @@ public abstract class Result {
      */
     public String getEventName() {
         String id = getEventId();
-        PrismEvent event = Sponge.getRegistry().getType(PrismEvent.class, id).orElse(null);
+        PrismEvent event = PrismEvents.REGISTRY_MODULE.getById(id).orElse(null);
         if (event != null && StringUtils.isNotBlank(event.getName())) {
             return event.getName();
         }
@@ -129,7 +129,7 @@ public abstract class Result {
         }
 
         // Pull record class for this event, if any
-        Class<? extends Result> resultRecordClass = Sponge.getRegistry().getType(PrismEvent.class, id)
+        Class<? extends Result> resultRecordClass = PrismEvents.REGISTRY_MODULE.getById(id)
                 .map(PrismEvent::getResultClass)
                 .orElseThrow(() -> new UnsupportedOperationException(id + " is not supported"));
 

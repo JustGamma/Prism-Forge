@@ -36,7 +36,6 @@ import com.helion3.prism.util.DataQueries;
 import com.helion3.prism.util.DateUtil;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.spongepowered.api.scheduler.Task;
 
 public class MySQLStorageAdapter implements StorageAdapter {
 
@@ -95,11 +94,7 @@ public class MySQLStorageAdapter implements StorageAdapter {
 
             // Purge async
             if (Prism.getInstance().getConfig().getStorageCategory().isShouldExpire()) {
-                Task.builder()
-                    .async()
-                    .name("PrismMySQLPurge")
-                    .execute(this::purge)
-                    .submit(Prism.getInstance().getPluginContainer());
+                Prism.getInstance().getScheduler().execute("PrismMySQLPurge", this::purge);
             }
 
             return true;
@@ -229,7 +224,9 @@ public class MySQLStorageAdapter implements StorageAdapter {
 
     @Override
     public void close() {
-        db.close();
+        if (db != null) {
+            db.close();
+        }
     }
 
     @Override

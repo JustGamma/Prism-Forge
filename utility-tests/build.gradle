@@ -1,0 +1,13 @@
+plugins {
+    id 'base'
+}
+
+// Preserve the existing test command. Original and native sources now compile together in Forge,
+// so these checks exercise the exact application classes that are packaged for the server.
+tasks.register('test') {
+    dependsOn ':forge:test'
+}
+
+tasks.named('check') {
+    dependsOn 'test'
+}

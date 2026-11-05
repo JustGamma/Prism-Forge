@@ -27,8 +27,6 @@ package com.helion3.prism;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.google.inject.Inject;
-import com.helion3.prism.api.data.PrismEvent;
 import com.helion3.prism.api.filters.FilterList;
 import com.helion3.prism.api.filters.FilterMode;
 import com.helion3.prism.api.flags.FlagClean;
@@ -46,34 +44,28 @@ import com.helion3.prism.api.parameters.ParameterRadius;
 import com.helion3.prism.api.parameters.ParameterTime;
 import com.helion3.prism.api.records.ActionableResult;
 import com.helion3.prism.api.storage.StorageAdapter;
-import com.helion3.prism.commands.PrismCommands;
+import com.helion3.prism.forge.BuildInfo;
+import com.helion3.prism.forge.MigrationStatusCommand;
 import com.helion3.prism.configuration.Config;
 import com.helion3.prism.configuration.Configuration;
-import com.helion3.prism.listeners.ChangeBlockListener;
-import com.helion3.prism.listeners.EntityListener;
-import com.helion3.prism.listeners.InventoryListener;
-import com.helion3.prism.listeners.RequiredInteractListener;
 import com.helion3.prism.queues.RecordingQueueManager;
 import com.helion3.prism.storage.h2.H2StorageAdapter;
 import com.helion3.prism.storage.mongodb.MongoStorageAdapter;
 import com.helion3.prism.storage.mysql.MySQLStorageAdapter;
-import com.helion3.prism.util.PrismEvents;
+import com.helion3.prism.util.AsyncScheduler;
 import com.helion3.prism.util.Reference;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.spongepowered.api.Sponge;
-import org.spongepowered.api.config.DefaultConfig;
-import org.spongepowered.api.event.Listener;
-import org.spongepowered.api.event.game.state.GameConstructionEvent;
-import org.spongepowered.api.event.game.state.GameInitializationEvent;
-import org.spongepowered.api.event.game.state.GamePostInitializationEvent;
-import org.spongepowered.api.event.game.state.GamePreInitializationEvent;
-import org.spongepowered.api.event.game.state.GameStartedServerEvent;
-import org.spongepowered.api.event.game.state.GameStoppedServerEvent;
-import org.spongepowered.api.plugin.Plugin;
-import org.spongepowered.api.plugin.PluginContainer;
-import org.spongepowered.api.scheduler.Task;
+import org.apache.logging.log4j.Logger;
+import cpw.mods.fml.common.Mod;
+import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLPostInitializationEvent;
+import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import cpw.mods.fml.common.event.FMLServerStartedEvent;
+import cpw.mods.fml.common.event.FMLServerStartingEvent;
+import cpw.mods.fml.common.event.FMLServerStoppedEvent;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -87,53 +79,52 @@ import java.util.concurrent.TimeUnit;
  *
  * @author viveleroi
  */
-@Plugin(
-        id = Reference.ID,
+@Mod(
+        modid = Reference.ID,
         name = Reference.NAME,
-        version = Reference.VERSION,
-        description = Reference.DESCRIPTION,
-        authors = Reference.AUTHORS,
-        url = Reference.WEBSITE
+        version = BuildInfo.VERSION,
+        acceptedMinecraftVersions = "[1.7.10]",
+        acceptableRemoteVersions = "*",
+        dependencies = "required-after:Forge@[10.13.4.1614]"
 )
 public final class Prism {
 
     private static Prism instance;
 
-    @Inject
-    private PluginContainer pluginContainer;
-
-    @Inject
     private Logger logger;
 
-    @Inject
-    @DefaultConfig(sharedRoot = false)
     private Path path;
 
     private Configuration configuration;
     private StorageAdapter storageAdapter;
+    private AsyncScheduler scheduler;
+    private boolean storageReady;
 
     private final Set<UUID> activeWands = Sets.newHashSet();
     private final FilterList filterList = new FilterList(FilterMode.BLACKLIST);
     private final Set<FlagHandler> flagHandlers = Sets.newHashSet();
     private final Map<UUID, List<ActionableResult>> lastActionResults = Maps.newHashMap();
     private final Set<ParameterHandler> parameterHandlers = Sets.newHashSet();
-    private final Set<PrismEvent> prismEvents = Sets.newHashSet();
     private final RecordingQueueManager recordingQueueManager = new RecordingQueueManager();
 
-    @Listener
-    public void onConstruction(GameConstructionEvent event) {
-        instance = this;
-        configuration = new Configuration(getPath());
-        Sponge.getRegistry().registerModule(PrismEvent.class, PrismEvents.REGISTRY_MODULE);
-    }
-
-    @Listener
-    public void onPreInitialization(GamePreInitializationEvent event) {
+    @Mod.EventHandler
+    public void onPreInitialization(FMLPreInitializationEvent event) throws IOException {
+        initialize(event.getModConfigurationDirectory().toPath().resolve(Reference.ID).resolve("prism.conf"),
+                event.getModLog());
         getConfiguration().loadConfiguration();
     }
 
-    @Listener
-    public void onInitialization(GameInitializationEvent event) {
+    /** Supplies the state that Sponge previously injected, without a game-service implementation. */
+    public void initialize(Path path, Logger logger) throws IOException {
+        instance = this;
+        this.path = path;
+        this.logger = logger;
+        Files.createDirectories(path.toAbsolutePath().getParent());
+        configuration = new Configuration(getPath());
+    }
+
+    @Mod.EventHandler
+    public void onInitialization(FMLInitializationEvent event) {
         // Register FlagHandlers
         registerFlagHandler(new FlagClean());
         registerFlagHandler(new FlagDrain());
@@ -149,25 +140,22 @@ public final class Prism {
         registerParameterHandler(new ParameterRadius());
         registerParameterHandler(new ParameterTime());
 
-        // Register Commands
-        Sponge.getCommandManager().register(this, PrismCommands.getCommand(), Reference.ID, "pr");
-
-        // Register Listeners
-        Sponge.getEventManager().registerListeners(getPluginContainer(), new ChangeBlockListener());
-        Sponge.getEventManager().registerListeners(getPluginContainer(), new EntityListener());
-        Sponge.getEventManager().registerListeners(getPluginContainer(), new InventoryListener());
-
-        // Events required for internal operation
-        Sponge.getEventManager().registerListeners(getPluginContainer(), new RequiredInteractListener());
+        // Command and gameplay-listener registration follows their native platform adapters.
     }
 
-    @Listener
-    public void onPostInitialization(GamePostInitializationEvent event) {
+    @Mod.EventHandler
+    public void onPostInitialization(FMLPostInitializationEvent event) {
         getConfiguration().saveConfiguration();
     }
 
-    @Listener
-    public void onStartedServer(GameStartedServerEvent event) {
+    @Mod.EventHandler
+    public void onStartingServer(FMLServerStartingEvent event) {
+        event.registerServerCommand(new MigrationStatusCommand());
+    }
+
+    @Mod.EventHandler
+    public void onStartedServer(FMLServerStartedEvent event) {
+        scheduler = new AsyncScheduler(getLogger());
         String engine = getConfig().getStorageCategory().getEngine();
         try {
             if (StringUtils.equalsIgnoreCase(engine, "h2")) {
@@ -181,33 +169,40 @@ public final class Prism {
             }
 
             Preconditions.checkState(getStorageAdapter().connect());
+            storageReady = true;
 
             // Initialize the recording queue manager
-            Task.builder()
-                    .async()
-                    .name("PrismRecordingQueueManager")
-                    .interval(1, TimeUnit.SECONDS)
-                    .execute(recordingQueueManager)
-                    .submit(getPluginContainer());
-            getLogger().info("Prism started successfully. Bad guys beware.");
+            getScheduler().repeat("PrismRecordingQueueManager", recordingQueueManager, 1, TimeUnit.SECONDS);
+            getLogger().info("Prism storage started on Java {}. Gameplay recording, lookup commands and rollback are not enabled yet.",
+                    System.getProperty("java.version"));
         } catch (Exception ex) {
-            Sponge.getEventManager().unregisterPluginListeners(getPluginContainer());
+            getScheduler().shutdownAndWait();
+            if (getStorageAdapter() != null) {
+                getStorageAdapter().close();
+            }
+            storageAdapter = null;
+            storageReady = false;
             getLogger().error("Encountered an error processing {}::onStartedServer", "Prism", ex);
         }
     }
 
-    @Listener
-    public void onStoppedServer(GameStoppedServerEvent event) {
+    @Mod.EventHandler
+    public void onStoppedServer(FMLServerStoppedEvent event) {
         // Cancel all scheduled tasks
-        Sponge.getScheduler().getScheduledTasks(getInstance()).forEach(Task::cancel);
+        if (getScheduler() != null) {
+            getScheduler().shutdownAndWait();
+        }
 
-        if (getStorageAdapter() != null) {
+        if (storageReady) {
             // Flush any pending records
             // If the scheduled task is still running this will block until it completes
-            recordingQueueManager.run();
-
-            // Shutdown storage
-            getStorageAdapter().close();
+            try {
+                recordingQueueManager.run();
+            } finally {
+                // Shutdown storage only after all database tasks and the final flush complete.
+                getStorageAdapter().close();
+                storageReady = false;
+            }
         }
     }
 
@@ -215,8 +210,12 @@ public final class Prism {
         return instance;
     }
 
-    public PluginContainer getPluginContainer() {
-        return pluginContainer;
+    public AsyncScheduler getScheduler() {
+        return scheduler;
+    }
+
+    public boolean isStorageReady() {
+        return storageReady;
     }
 
     public Logger getLogger() {

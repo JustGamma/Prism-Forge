@@ -33,9 +33,6 @@ import com.helion3.prism.util.DataQueries;
 import com.helion3.prism.util.DateUtil;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.spongepowered.api.Sponge;
-import org.spongepowered.api.scheduler.Task;
-import org.spongepowered.api.service.sql.SqlService;
 
 import com.helion3.prism.Prism;
 import com.helion3.prism.api.storage.StorageAdapter;
@@ -47,7 +44,6 @@ public class H2StorageAdapter implements StorageAdapter {
     private final String expiration = Prism.getInstance().getConfig().getStorageCategory().getExpireRecords();
     private final String tablePrefix = Prism.getInstance().getConfig().getStorageCategory().getTablePrefix();
     private final int purgeBatchLimit = Prism.getInstance().getConfig().getStorageCategory().getPurgeBatchLimit();
-    private final SqlService sql = Sponge.getServiceManager().provide(SqlService.class).get();
     private final Path dbPath = Prism.getInstance().getPath().getParent().resolve(Prism.getInstance().getConfig().getStorageCategory().getDatabase());
     private final StorageAdapterRecords records;
     private static HikariDataSource db;
@@ -74,6 +70,8 @@ public class H2StorageAdapter implements StorageAdapter {
         try {
             // Get data source
             HikariConfig config = new HikariConfig();
+            // Shading relocates this name with the bundled driver; avoid another mod's JDBC provider.
+            config.setDriverClassName("org.h2.Driver");
             config.setJdbcUrl("jdbc:h2:" + dbPath.toString());
             config.setMaximumPoolSize(Prism.getInstance().getConfig().getStorageCategory().getMaximumPoolSize());
             config.setMinimumIdle(Prism.getInstance().getConfig().getStorageCategory().getMinimumIdle());
@@ -85,11 +83,7 @@ public class H2StorageAdapter implements StorageAdapter {
 
             // Purge async
             if (Prism.getInstance().getConfig().getStorageCategory().isShouldExpire()) {
-                Task.builder()
-                    .async()
-                    .name("PrismH2Purge")
-                    .execute(this::purge)
-                    .submit(Prism.getInstance().getPluginContainer());
+                Prism.getInstance().getScheduler().execute("PrismH2Purge", this::purge);
             }
 
             return true;
@@ -221,7 +215,9 @@ public class H2StorageAdapter implements StorageAdapter {
 
     @Override
     public void close() {
-        db.close();
+        if (db != null) {
+            db.close();
+        }
     }
 
     @Override

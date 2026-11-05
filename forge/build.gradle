@@ -1,0 +1,166 @@
+plugins {
+    id 'java'
+    id 'com.gtnewhorizons.retrofuturagradle' version '2.0.6'
+    id 'com.gradleup.shadow' version '9.6.1'
+}
+
+base {
+    archivesName = 'prism-forge'
+}
+
+repositories {
+    maven {
+        url = uri('https://repo.spongepowered.org/maven/')
+        content {
+            includeGroup 'org.spongepowered'
+        }
+    }
+}
+
+configurations {
+    bundled {
+        canBeConsumed = false
+    }
+    implementation.extendsFrom(bundled)
+}
+
+dependencies {
+    bundled('org.spongepowered:spongeapi:7.1.0') {
+        // Unused world-generation snapshot; Forge already supplies its own ASM implementation.
+        exclude group: 'com.flowpowered', module: 'flow-noise'
+        exclude group: 'org.ow2.asm'
+    }
+    bundled 'com.zaxxer:HikariCP:3.4.2'
+    bundled 'com.h2database:h2:1.4.197'
+    bundled 'mysql:mysql-connector-java:8.0.19'
+    bundled 'org.mariadb.jdbc:mariadb-java-client:2.5.4'
+    bundled 'org.mongodb:mongo-java-driver:3.10.2'
+    bundled 'org.slf4j:slf4j-simple:1.7.25'
+    testImplementation platform('org.junit:junit-bom:5.14.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testRuntimeOnly 'org.apache.logging.log4j:log4j-core:2.25.2'
+}
+
+sourceSets {
+    main.java.srcDir(rootProject.file('src/main/java'))
+    test.java.srcDir(rootProject.file('src/test/java'))
+    integrationTest {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+    }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+minecraft {
+    // RFG 2.0.6 maps 1.7.10 to Forge 10.13.4.1614 and stable-12 mappings.
+    mcVersion.set('1.7.10')
+    javaCompatibilityVersion.set(8)
+    // The legacy Minecraft SDK uses Java 8, not Prism compilation.
+    jvmLanguageVersion.set(JavaLanguageVersion.of(8))
+    injectedTags.put('VERSION', project.version.toString())
+}
+
+tasks.named('injectTags') {
+    outputClassName.set('com.helion3.prism.forge.BuildInfo')
+}
+
+tasks.named('compileJava', JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.release = 8
+}
+
+tasks.named('processResources') {
+    inputs.property 'modVersion', project.version
+    filesMatching('mcmod.info') {
+        expand(modVersion: project.version)
+    }
+    from(rootProject.file('LICENSE.txt'))
+}
+
+tasks.named('jar') {
+    archiveClassifier = 'unbundled-dev'
+}
+
+tasks.named('shadowJar') {
+    archiveClassifier = 'dev'
+    configurations = [project.configurations.bundled]
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    filesMatching('META-INF/services/**') {
+        duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    }
+    mergeServiceFiles()
+    exclude 'META-INF/services/javax.annotation.processing.Processor'
+    // Shading changes jar contents; retain licenses but not the dependencies' jar signatures.
+    exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA', 'META-INF/INDEX.LIST'
+    exclude 'module-info.class', 'META-INF/versions/**/module-info.class'
+
+    // The original build already relocated MongoDB/BSON. Isolate the libraries formerly
+    // supplied by Sponge too, rather than replacing Forge's Guava, Gson or logging classes.
+    [
+        'com.google.common': 'guava',
+        'com.google.gson': 'gson',
+        'com.google.inject': 'guice',
+        'com.github.benmanes.caffeine': 'caffeine',
+        'com.typesafe.config': 'typesafe.config',
+        'ninja.leaping.configurate': 'configurate',
+        'org.yaml.snakeyaml': 'snakeyaml',
+        'org.apache.commons.lang3': 'commons.lang3',
+        'com.flowpowered.math': 'flow.math',
+        'org.slf4j': 'slf4j',
+        'com.zaxxer.hikari': 'hikari',
+        'org.h2': 'h2',
+        'com.mysql': 'mysql',
+        'org.mariadb.jdbc': 'mariadb.jdbc',
+        'com.mongodb': 'mongodb',
+        'org.bson': 'bson',
+        'javax.inject': 'inject',
+        'org.aopalliance': 'aopalliance'
+    ].each { originalPackage, isolatedPackage ->
+        relocate originalPackage, "com.helion3.prism.lib.${isolatedPackage}"
+    }
+
+    // Keep each dependency's notices separately; root-level names often collide.
+    project.configurations.bundled.resolvedConfiguration.resolvedArtifacts.each { artifact ->
+        from(zipTree(artifact.file)) {
+            include 'LICENSE*', 'NOTICE*', 'COPYING*', 'META-INF/LICENSE*', 'META-INF/NOTICE*'
+            into "META-INF/licenses/${artifact.moduleVersion.id.name}-${artifact.moduleVersion.id.version}"
+        }
+    }
+}
+
+tasks.named('reobfJar') {
+    setInputJarFromTask(tasks.named('shadowJar'))
+}
+
+// Separate test mod, installed only in the disposable server. It references no obfuscated
+// Minecraft members, so its Forge event handlers do not need a reobfuscation pass.
+tasks.register('recordingProbeJar', Jar) {
+    archiveBaseName = 'prism-recording-probe'
+    archiveClassifier = 'test-only'
+    from sourceSets.integrationTest.output
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+        exceptionFormat = 'full'
+    }
+}
+
+// The legacy mod scanner needs Java 8 production bytecode; test classes run only on JDK 25.
+tasks.named('compileTestJava', JavaCompile) {
+    sourceCompatibility = '25'
+    targetCompatibility = '25'
+    options.release = 25
+}

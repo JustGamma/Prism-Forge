@@ -26,7 +26,7 @@ package com.helion3.prism.configuration;
 
 import com.google.common.collect.Lists;
 import com.google.common.reflect.TypeToken;
-import com.helion3.prism.Prism;
+import com.helion3.prism.util.Reference;
 import ninja.leaping.configurate.ConfigurationNode;
 import ninja.leaping.configurate.commented.CommentedConfigurationNode;
 import ninja.leaping.configurate.hocon.HoconConfigurationLoader;
@@ -34,10 +34,14 @@ import ninja.leaping.configurate.loader.ConfigurationLoader;
 import ninja.leaping.configurate.objectmapping.ObjectMapper;
 import ninja.leaping.configurate.objectmapping.ObjectMappingException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.nio.file.Path;
 
 public class Configuration {
+
+    private static final Logger LOGGER = LogManager.getLogger(Reference.ID);
 
     private ConfigurationLoader<CommentedConfigurationNode> configurationLoader;
     private ObjectMapper<Config>.BoundInstance objectMapper;
@@ -47,7 +51,7 @@ public class Configuration {
             this.configurationLoader = HoconConfigurationLoader.builder().setPath(path).build();
             this.objectMapper = ObjectMapper.forClass(Config.class).bindToNew();
         } catch (Exception ex) {
-            Prism.getInstance().getLogger().error("Encountered an error while initializing configuration", ex);
+            LOGGER.error("Encountered an error while initializing configuration", ex);
         }
     }
 
@@ -56,15 +60,15 @@ public class Configuration {
             ConfigurationNode configurationNode = getConfigurationLoader().load();
 
             if (!configurationNode.isVirtual() && configurationNode.getNode("general", "schema-version").isVirtual()) {
-                Prism.getInstance().getLogger().info("Converting Configuration...");
+                LOGGER.info("Converting Configuration...");
                 convertConfiguration(configurationNode);
             } else {
                 getObjectMapper().populate(configurationNode);
             }
 
-            Prism.getInstance().getLogger().info("Successfully loaded configuration file.");
+            LOGGER.info("Successfully loaded configuration file.");
         } catch (Exception ex) {
-            Prism.getInstance().getLogger().error("Encountered an error while loading config", ex);
+            LOGGER.error("Encountered an error while loading config", ex);
         }
     }
 
@@ -73,9 +77,9 @@ public class Configuration {
             ConfigurationNode configurationNode = getConfigurationLoader().createEmptyNode();
             getObjectMapper().serialize(configurationNode);
             getConfigurationLoader().save(configurationNode);
-            Prism.getInstance().getLogger().info("Successfully saved configuration file.");
+            LOGGER.info("Successfully saved configuration file.");
         } catch (Exception ex) {
-            Prism.getInstance().getLogger().error("Encountered an error while saving config", ex);
+            LOGGER.error("Encountered an error while saving config", ex);
         }
     }
 
