@@ -144,7 +144,7 @@ public final class Prism {
         registerParameterHandler(new ParameterRadius());
         registerParameterHandler(new ParameterTime());
 
-        // Inspection only; gameplay recording awaits its native capture adapters.
+        // Inspection and its break/place cancellation rules use Forge's native event bus.
         MinecraftForge.EVENT_BUS.register(new ForgeRequiredInteractListener());
     }
 
@@ -180,7 +180,7 @@ public final class Prism {
 
             // Initialize the recording queue manager
             getScheduler().repeat("PrismRecordingQueueManager", recordingQueueManager, 1, TimeUnit.SECONDS);
-            getLogger().info("Prism storage started on Java {}. Lookup and inspection commands are available; gameplay recording and restoration are not enabled yet.",
+            getLogger().info("Prism storage started on Java {}. Direct player block break/place recording, lookup and inspection are available. Restoration and other event capture are not enabled.",
                     System.getProperty("java.version"));
         } catch (Exception ex) {
             getScheduler().shutdownAndWait();

@@ -54,6 +54,6 @@ public final class MigrationStatusCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText("Prism Forge migration test " + BuildInfo.VERSION
                 + "; Java " + System.getProperty("java.version")
                 + ". Storage " + (Prism.getInstance().isStorageReady() ? "ready" : "unavailable")
-                + ". Lookup and inspection commands are available; gameplay recording and restoration are not enabled."));
+                + ". Direct player block break/place recording, lookup and inspection are available. Restoration and other event capture are not enabled."));
     }
 }

@@ -118,7 +118,9 @@ def buildMetadata = providers.provider {
         'Implementation-Version': project.version.toString() + '+' + ciSystem + '-b' + buildNumber + '.git-' + gitRevision.get(),
         'Implementation-Vendor': 'http://helion3.com/',
         'Git-Revision': gitRevision.get(),
-        'Git-Describe': gitDescription.get()
+        'Git-Describe': gitDescription.get(),
+        'FMLCorePlugin': 'com.helion3.prism.forge.core.PrismCorePlugin',
+        'FMLCorePluginContainsFMLMod': 'true'
     ]
 }
 
@@ -195,6 +197,25 @@ tasks.register('recordingProbeDevJar', Jar) {
     archiveBaseName = 'prism-recording-probe'
     archiveClassifier = 'test-only-dev'
     from sourceSets.integrationTest.output
+    exclude 'com/helion3/prism/forge/probe/CapturePipelineProbe*'
+}
+
+tasks.register('captureProbeDevJar', Jar) {
+    archiveBaseName = 'prism-capture-probe'
+    archiveClassifier = 'test-only-dev'
+    from sourceSets.integrationTest.output
+    include 'com/helion3/prism/forge/probe/CapturePipelineProbe*'
+}
+
+tasks.named('reobfCaptureProbeDevJar') {
+    archiveClassifier = 'test-only'
+    referenceClasspath.from(sourceSets.main.output)
+}
+
+tasks.register('captureProbeJar') {
+    group = 'build'
+    description = 'Builds the separate native player-capture and MongoDB test mod.'
+    dependsOn tasks.named('reobfCaptureProbeDevJar')
 }
 
 tasks.named('reobfRecordingProbeDevJar') {
@@ -209,12 +230,34 @@ tasks.register('recordingProbeJar') {
 }
 
 tasks.named('test', Test) {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'mongodb'
+    }
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(25)
     }
     testLogging {
         events 'passed', 'skipped', 'failed'
+        exceptionFormat = 'full'
+    }
+}
+
+// Explicit live-database checks; ordinary unit tests remain independent of MongoDB.
+tasks.register('mongoTest', Test) {
+    group = 'verification'
+    description = 'Exercises the retained record pipeline against an authenticated MongoDB server.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    dependsOn tasks.named('testClasses')
+    useJUnitPlatform {
+        includeTags 'mongodb'
+    }
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    systemProperty 'prism.mongo.address', providers.gradleProperty('mongoTestAddress').getOrElse('127.0.0.1:27117')
+    testLogging {
+        events 'passed', 'failed'
         exceptionFormat = 'full'
     }
 }

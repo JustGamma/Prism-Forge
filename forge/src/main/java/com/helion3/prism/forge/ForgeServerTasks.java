@@ -94,6 +94,10 @@ public final class ForgeServerTasks {
         serverThread = null;
     }
 
+    public static boolean isServerThread() {
+        return running && Thread.currentThread() == serverThread;
+    }
+
     private static final class Job<T> {
         private final Callable<T> action;
         private final CompletableFuture<T> future = new CompletableFuture<>();

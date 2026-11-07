@@ -26,6 +26,8 @@ package com.helion3.prism.api.records;
 
 import com.google.common.base.Preconditions;
 import com.helion3.prism.Prism;
+import com.helion3.prism.forge.world.ForgeBlockSnapshot;
+import com.helion3.prism.forge.world.ForgeLocation;
 import com.helion3.prism.api.data.PrismEvent;
 import com.helion3.prism.queues.RecordingQueue;
 import com.helion3.prism.util.DataQueries;
@@ -98,6 +100,9 @@ public class PrismRecord {
             causeValue = ((Player) getSource()).getUniqueId().toString();
         } else if (getSource() instanceof Entity) {
             causeValue = ((Entity) getSource()).getType().getName();
+        } else if (getSource() instanceof net.minecraft.entity.player.EntityPlayer) {
+            causeKey = DataQueries.Player;
+            causeValue = ((net.minecraft.entity.player.EntityPlayer) getSource()).getUniqueID().toString();
         }
 
         DataUtil.writeToDataView(getDataContainer(), causeKey, causeValue);
@@ -105,6 +110,14 @@ public class PrismRecord {
         // Source filtered?
         if (!Prism.getInstance().getFilterList().allowsSource(getSource())) {
             return;
+        }
+
+        // Native snapshots store canonical registry IDs, rather than Sponge catalog objects.
+        if (getSource() instanceof net.minecraft.entity.player.EntityPlayer) {
+            for (DataQuery snapshot : new DataQuery[]{DataQueries.OriginalBlock, DataQueries.ReplacementBlock}) {
+                Optional<String> id = getDataContainer().getString(snapshot.then(DataQueries.BlockState).then(DataQueries.BlockType));
+                if (id.isPresent() && !Prism.getInstance().getFilterList().allowsBlock(id.get())) return;
+            }
         }
 
         // Original block filtered?
@@ -180,6 +193,16 @@ public class PrismRecord {
             Preconditions.checkNotNull(block);
 
             DataUtil.writeToDataView(getDataContainer(), DataQueries.ReplacementBlock, formatBlockDataContainer(block));
+            return this;
+        }
+
+        public EventBuilder blockOriginal(ForgeBlockSnapshot block) {
+            DataUtil.writeToDataView(getDataContainer(), DataQueries.OriginalBlock, formatBlockDataContainer(block.toContainer()));
+            return this;
+        }
+
+        public EventBuilder blockReplacement(ForgeBlockSnapshot block) {
+            DataUtil.writeToDataView(getDataContainer(), DataQueries.ReplacementBlock, formatBlockDataContainer(block.toContainer()));
             return this;
         }
 
@@ -308,6 +331,11 @@ public class PrismRecord {
             return this;
         }
 
+        public EventBuilder location(ForgeLocation location) {
+            DataUtil.writeToDataView(getDataContainer(), DataQueries.Location, location.toContainer());
+            return this;
+        }
+
         /**
          * Helper method for writing target container data.
          *
@@ -330,11 +358,14 @@ public class PrismRecord {
             Preconditions.checkNotNull(block);
             Preconditions.checkNotNull(block.getState(), "Missing BlockState: " + block.toString());
 
-            DataContainer blockData = block.toContainer();
+            return formatBlockDataContainer(block.toContainer());
+        }
+
+        private DataContainer formatBlockDataContainer(DataContainer blockData) {
             blockData.remove(DataQueries.Position);
             blockData.remove(DataQueries.WorldUuid);
 
-            DataView unsafeData = blockData.getObject(DataQueries.UnsafeData, DataView.class).orElse(null);
+            DataView unsafeData = blockData.getView(DataQueries.UnsafeData).orElse(null);
             if (unsafeData != null) {
                 unsafeData.remove(DataQueries.X);
                 unsafeData.remove(DataQueries.Y);
@@ -405,6 +436,9 @@ public class PrismRecord {
             if (player != null) {
                 return new PrismRecord.EventBuilder(player);
             }
+
+            net.minecraft.entity.player.EntityPlayer nativePlayer = cause.first(net.minecraft.entity.player.EntityPlayer.class).orElse(null);
+            if (nativePlayer != null) return new PrismRecord.EventBuilder(nativePlayer);
 
             EntityDamageSource attacker = cause.first(EntityDamageSource.class).orElse(null);
             if (attacker != null) {

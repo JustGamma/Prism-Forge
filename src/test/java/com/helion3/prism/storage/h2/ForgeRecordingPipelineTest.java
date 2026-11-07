@@ -89,6 +89,7 @@ class ForgeRecordingPipelineTest {
         previousInstance = Prism.getInstance();
         prism = new Prism();
         prism.initialize(directory.resolve("prism.conf"), LogManager.getLogger("prism-pipeline-test"));
+        prism.getConfig().getStorageCategory().setEngine("h2");
         prism.getConfig().getStorageCategory().setShouldExpire(false);
         RecordingQueue.getQueue().clear();
     }

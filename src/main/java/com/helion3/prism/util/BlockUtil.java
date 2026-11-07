@@ -144,4 +144,60 @@ public class BlockUtil {
             a.equals(BlockTypes.PISTON_HEAD) || b.equals(BlockTypes.PISTON_HEAD)
         );
     }
+
+
+    /** Original rejection rule with native registry IDs and cause objects. */
+    public static boolean rejectPlaceCombination(String a, String b) {
+        return (
+            // Just basic state changes
+            a.equals("minecraft:lit_furnace") || b.equals("minecraft:lit_furnace") ||
+            a.equals("minecraft:lit_redstone_lamp") || b.equals("minecraft:lit_redstone_lamp") ||
+            a.equals("minecraft:lit_redstone_ore") || b.equals("minecraft:lit_redstone_ore") ||
+            a.equals("minecraft:unlit_redstone_torch") || b.equals("minecraft:unlit_redstone_torch") ||
+            (a.equals("minecraft:powered_repeater") && b.equals("minecraft:unpowered_repeater")) ||
+            (a.equals("minecraft:unpowered_repeater") && b.equals("minecraft:powered_repeater")) ||
+            (a.equals("minecraft:powered_comparator") && b.equals("minecraft:unpowered_comparator")) ||
+            (a.equals("minecraft:unpowered_comparator") && b.equals("minecraft:powered_comparator")) ||
+
+            // It's all water...
+            (a.equals("minecraft:water") && b.equals("minecraft:flowing_water")) ||
+            (a.equals("minecraft:flowing_water") && b.equals("minecraft:water")) ||
+
+            // It's all lava....
+            (a.equals("minecraft:lava") && b.equals("minecraft:flowing_lava")) ||
+            (a.equals("minecraft:flowing_lava") && b.equals("minecraft:lava")) ||
+
+            // Crap that fell into lava
+            (a.equals("minecraft:lava") && b.equals("minecraft:gravel")) ||
+            (a.equals("minecraft:flowing_lava") && b.equals("minecraft:gravel")) ||
+            (a.equals("minecraft:lava") && b.equals("minecraft:sand")) ||
+            (a.equals("minecraft:flowing_lava") && b.equals("minecraft:sand")) ||
+
+            // It's fire (which didn't burn anything)
+            (a.equals("minecraft:fire") && b.equals("minecraft:air")) ||
+
+            // Piston
+            a.equals("minecraft:piston_extension") || b.equals("minecraft:piston_extension") ||
+            a.equals("minecraft:piston_head") || b.equals("minecraft:piston_head") ||
+
+            // You can't place air
+            b.equals("minecraft:air")
+        );
+    }
+
+    /** Original rejection rule with native registry IDs and cause objects. */
+    public static boolean rejectBreakCombination(String a, String b) {
+        return (
+            // You can't break these...
+            a.equals("minecraft:fire") ||
+            a.equals("minecraft:air") ||
+
+            // Note, see "natural flow" comment above.
+            ((a.equals("minecraft:flowing_water") || a.equals("minecraft:flowing_lava")) && b.equals("minecraft:air")) ||
+
+            // Piston
+            a.equals("minecraft:piston_extension") || b.equals("minecraft:piston_extension") ||
+            a.equals("minecraft:piston_head") || b.equals("minecraft:piston_head")
+        );
+    }
 }

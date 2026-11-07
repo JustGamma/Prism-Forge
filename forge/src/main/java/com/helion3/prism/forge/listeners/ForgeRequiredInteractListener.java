@@ -40,10 +40,25 @@ import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.event.entity.player.EntityInteractEvent;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.event.world.BlockEvent;
 import org.spongepowered.api.text.Text;
 
-/** Native event boundary for the original inspection rules; it records no gameplay events. */
+/** Native event boundary for the original inspection and wand cancellation rules. */
 public final class ForgeRequiredInteractListener {
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public void onBreakWhileInspecting(BlockEvent.BreakEvent event) {
+        if (!event.world.isRemote && Prism.getInstance().getActiveWands().contains(event.getPlayer().getUniqueID())) {
+            event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public void onPlaceWhileInspecting(BlockEvent.PlaceEvent event) {
+        if (!event.world.isRemote && Prism.getInstance().getActiveWands().contains(event.player.getUniqueID())) {
+            event.setCanceled(true);
+        }
+    }
+
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onInteractBlock(PlayerInteractEvent event) {
         if (event.world.isRemote || !(event.entityPlayer instanceof EntityPlayerMP)) {

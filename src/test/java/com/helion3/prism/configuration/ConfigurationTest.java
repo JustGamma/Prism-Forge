@@ -44,13 +44,13 @@ class ConfigurationTest {
     Path directory;
 
     @Test
-    void missingFileRetainsOriginalDefaultsAndSavesOriginalKeys() throws Exception {
+    void missingFileUsesMongoDefaultAndSavesOriginalKeys() throws Exception {
         Path file = directory.resolve("prism.conf");
         Configuration configuration = new Configuration(file);
         configuration.loadConfiguration();
 
         Config config = configuration.getConfig();
-        assertEquals("h2", config.getStorageCategory().getEngine());
+        assertEquals("mongodb", config.getStorageCategory().getEngine());
         assertEquals("prism_", config.getStorageCategory().getTablePrefix());
         assertEquals("4w", config.getStorageCategory().getExpireRecords());
         assertEquals(2, config.getGeneralCategory().getSchemaVersion());
@@ -62,7 +62,7 @@ class ConfigurationTest {
         configuration.saveConfiguration();
         assertTrue(Files.isRegularFile(file));
         ConfigurationNode saved = HoconConfigurationLoader.builder().setPath(file).build().load();
-        assertEquals("h2", saved.getNode("storage", "engine").getString());
+        assertEquals("mongodb", saved.getNode("storage", "engine").getString());
         assertEquals(2, saved.getNode("general", "schema-version").getInt());
         assertEquals(5, saved.getNode("default", "radius").getInt());
         assertFalse(saved.getNode("event", "block-grow").isVirtual());

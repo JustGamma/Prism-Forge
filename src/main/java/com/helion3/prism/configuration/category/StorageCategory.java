@@ -41,7 +41,7 @@ public class StorageCategory {
     @Setting(value = "engine", comment = ""
             + "The database engine\n"
             + "   (H2, MongoDB, MySQL)")
-    private String engine = "h2";
+    private String engine = "mongodb";
 
     @Setting(value = "mysql-driver", comment = ""
             + "The SQL driver to use when using "

@@ -26,6 +26,8 @@ package com.helion3.prism.listeners;
 
 import com.helion3.prism.Prism;
 import com.helion3.prism.api.records.PrismRecord;
+import com.helion3.prism.forge.world.ForgeBlockSnapshot;
+import com.helion3.prism.forge.world.ForgeLocation;
 import com.helion3.prism.util.BlockUtil;
 import com.helion3.prism.util.EventUtil;
 import com.helion3.prism.util.PrismEvents;
@@ -37,8 +39,35 @@ import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.Order;
 import org.spongepowered.api.event.block.ChangeBlockEvent;
 import org.spongepowered.api.plugin.PluginContainer;
+import org.spongepowered.api.event.cause.Cause;
 
 public class ChangeBlockListener {
+
+    /** Same recording decisions for a confirmed native player transaction. */
+    public void onNativeChange(Cause cause, ForgeLocation location, ForgeBlockSnapshot original,
+                               ForgeBlockSnapshot replacement, boolean breaking) {
+        if (cause.allOf(PluginContainer.class).stream().map(PluginContainer::getId).anyMatch(id ->
+                Prism.getInstance().getConfig().getGeneralCategory().getBlacklist().contains(id))) return;
+        if (cause.first(net.minecraft.entity.player.EntityPlayer.class)
+                .map(net.minecraft.entity.player.EntityPlayer::getUniqueID)
+                .map(Prism.getInstance().getActiveWands()::contains).orElse(false)) return;
+
+        String before = original.getBlockId();
+        String after = replacement.getBlockId();
+        if (breaking) {
+            if (!Prism.getInstance().getConfig().getEventCategory().isBlockBreak()
+                    || BlockUtil.rejectBreakCombination(before, after)
+                    || EventUtil.rejectBreakEventIdentity(before, after, cause)) return;
+        } else {
+            if (!Prism.getInstance().getConfig().getEventCategory().isBlockPlace()
+                    || BlockUtil.rejectPlaceCombination(before, after)
+                    || EventUtil.rejectPlaceEventIdentity(before, after, cause)) return;
+        }
+
+        PrismRecord.create().source(cause).blockOriginal(original).blockReplacement(replacement).location(location)
+                .event(breaking ? PrismEvents.BLOCK_BREAK : PrismEvents.BLOCK_PLACE)
+                .target((breaking ? before : after).replace("_", " ")).buildAndSave();
+    }
 
     /**
      * Listens to the base change block event.

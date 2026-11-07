@@ -29,6 +29,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -91,7 +93,7 @@ public class MongoRecords implements StorageAdapterRecords {
                     } else if (DataUtil.isPrimitiveType(object)) {
                         convertedList.add(object);
                     } else if (object.getClass().isArray()) {
-                        document.append(key, new PrimitiveArray(object));
+                        convertedList.add(new PrimitiveArray(object));
                     } else if (object.getClass().isEnum()) {
                         // Ignoring, this data should exist elsewhere in the document.
                         // this is ConnectedDirections and other vanilla manipulators
@@ -140,6 +142,8 @@ public class MongoRecords implements StorageAdapterRecords {
                 }
 
                 result.set(query, documentToDataContainer((Document) value));
+            } else if (value instanceof Collection) {
+                result.set(query, valueFromDocument(value));
             } else {
                 result.set(query, value);
             }
@@ -147,6 +151,25 @@ public class MongoRecords implements StorageAdapterRecords {
 
         return result;
    }
+
+    /** Decode stored keys/array markers inside lists while retaining the original map representation. */
+    private Object valueFromDocument(Object value) {
+        if (value instanceof Document) {
+            PrimitiveArray primitiveArray = PrimitiveArray.of((Document) value);
+            if (primitiveArray != null) return primitiveArray.getArray();
+            Map<String, Object> values = new LinkedHashMap<>();
+            for (Map.Entry<String, Object> entry : ((Document) value).entrySet()) {
+                values.put(DataUtil.unescapeQuery(entry.getKey()).asString('.'), valueFromDocument(entry.getValue()));
+            }
+            return values;
+        }
+        if (value instanceof Collection) {
+            List<Object> values = new ArrayList<>();
+            for (Object element : (Collection<?>) value) values.add(valueFromDocument(element));
+            return values;
+        }
+        return value;
+    }
 
    @Override
    public StorageWriteResult write(List<DataContainer> containers) throws Exception {

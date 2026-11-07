@@ -93,4 +93,49 @@ public class EventUtil {
 
         return false;
     }
+
+
+    /** Original rejection rule with native registry IDs and cause objects. */
+    public static boolean rejectBreakEventIdentity(String a, String b, Cause cause) {
+        // Falling blocks
+        if (a.equals("minecraft:gravel") && b.equals("minecraft:air")) {
+            return !cause.first(net.minecraft.entity.player.EntityPlayer.class).isPresent();
+        }
+
+        // Interesting bugs...
+        if (a.equals("minecraft:air") && b.equals("minecraft:air")) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /** Original rejection rule with native registry IDs and cause objects. */
+    public static boolean rejectPlaceEventIdentity(String a, String b, Cause cause) {
+        // Things that eat grass...
+        if (a.equals("minecraft:grass") && b.equals("minecraft:dirt")) {
+            return cause.first(net.minecraft.entity.EntityLivingBase.class).isPresent();
+        }
+
+        // Grass-like "Grow" events
+        if (a.equals("minecraft:dirt") && b.equals("minecraft:grass")) {
+            return cause.first(net.minecraftforge.common.util.BlockSnapshot.class).isPresent();
+        }
+
+        // If no entity at fault, we don't care about placement that didn't affect anything
+        if (!cause.first(net.minecraft.entity.Entity.class).isPresent()) {
+            return (a.equals("minecraft:air"));
+        }
+
+        // Natural flow/fire.
+        // Note: This only allows tracking on the source block set by a player using
+        // buckets, or items to set fires. Blocks broken by water, lava or fire are still logged as usual.
+        // Full flow/fire tracking would be hard on the database and is generally unnecessary.
+        if (!cause.first(net.minecraft.entity.player.EntityPlayer.class).isPresent()) {
+            return (a.equals("minecraft:air") && (b.equals("minecraft:flowing_lava") || b.equals("minecraft:flowing_water")) ||
+            b.equals("minecraft:fire"));
+        }
+
+        return false;
+    }
 }
